@@ -76,11 +76,11 @@ from utils.torch_utils import (
     torch_distributed_zero_first,
 )
 
-LOCAL_RANK = int(
-    os.getenv("LOCAL_RANK", -1)
-)  # https://pytorch.org/docs/stable/elastic/run.html
+# LOCAL_RANK = int(
+#     os.getenv("LOCAL_RANK", -1)
+# )  # https://pytorch.org/docs/stable/elastic/run.html
 RANK = int(os.getenv("RANK", -1))
-WORLD_SIZE = int(os.getenv("WORLD_SIZE", 1))
+# WORLD_SIZE = int(os.getenv("WORLD_SIZE", 1))
 GIT_INFO = None  # check_git_info()
 
 
@@ -159,7 +159,7 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
     plots = not evolve and not opt.noplots  # create plots
     cuda = device.type != "cpu"
     init_seeds(opt.seed + 1 + RANK, deterministic=True)
-    with torch_distributed_zero_first(LOCAL_RANK):
+    with torch_distributed_zero_first(opt.local_rank):
         data_dict = data_dict or check_dataset(data)  # check if None
     train_path, val_path = data_dict["train"], data_dict["val"]
     nc = 1 if single_cls else int(data_dict["nc"])  # number of classes
@@ -177,7 +177,7 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
     check_suffix(weights, ".pt")  # check weights
     pretrained = weights.endswith(".pt")
     if pretrained:
-        with torch_distributed_zero_first(LOCAL_RANK):
+        with torch_distributed_zero_first(opt.local_rank):
             weights = attempt_download(weights)  # download if not found locally
         ckpt = torch.load(
             weights, map_location="cpu"
@@ -278,14 +278,14 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
     train_loader, dataset = create_dataloader(
         train_path,
         imgsz,
-        batch_size // WORLD_SIZE,
+        batch_size // opt.local_world_size,
         gs,
         single_cls,
         hyp=hyp,
         augment=True,
         cache=None if opt.cache == "val" else opt.cache,
         rect=opt.rect,
-        rank=LOCAL_RANK,
+        rank=opt.local_rank,
         workers=workers,
         image_weights=opt.image_weights,
         close_mosaic=opt.close_mosaic != 0,
@@ -305,7 +305,7 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
         val_loader = create_dataloader(
             val_path,
             imgsz,
-            batch_size // WORLD_SIZE * 2,
+            batch_size // opt.local_world_size * 2,
             gs,
             single_cls,
             hyp=hyp,
@@ -358,7 +358,7 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
     callbacks.run("on_train_start")
     LOGGER.info(
         f"Image sizes {imgsz} train, {imgsz} val\n"
-        f"Using {train_loader.num_workers * WORLD_SIZE} dataloader workers\n"
+        f"Using {train_loader.num_workers * opt.local_world_size} dataloader workers\n"
         f"Logging results to {colorstr('bold', save_dir)}\n"
         f"Starting training for {epochs} epochs..."
     )
@@ -459,7 +459,9 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
                     pred, targets.to(device)
                 )  # loss scaled by batch_size
                 if RANK != -1:
-                    loss *= WORLD_SIZE  # gradient averaged between devices in DDP mode
+                    loss *= (
+                        opt.local_world_size
+                    )  # gradient averaged between devices in DDP mode
                 if opt.quad:
                     loss *= 4.0
 
@@ -514,7 +516,7 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
             if not noval or final_epoch:  # Calculate mAP
                 results, maps, _ = validate.run(
                     data_dict,
-                    batch_size=batch_size // WORLD_SIZE * 2,
+                    batch_size=batch_size // opt.local_world_size * 2,
                     imgsz=imgsz,
                     half=amp,
                     model=ema.ema,
@@ -585,7 +587,7 @@ def train(hyp, opt, device, callbacks):  # hyp is path/to/hyp.yaml or hyp dictio
                     LOGGER.info(f"\nValidating {f}...")
                     results, _, _ = validate.run(
                         data_dict,
-                        batch_size=batch_size // WORLD_SIZE * 2,
+                        batch_size=batch_size // opt.local_world_size * 2,
                         imgsz=imgsz,
                         model=attempt_load(f, device).half(),
                         single_cls=single_cls,
@@ -744,11 +746,12 @@ def parse_opt(known=False):
     )
     parser.add_argument("--seed", type=int, default=0, help="Global training seed")
     parser.add_argument(
-        "--local_rank",
+        "--local-rank",
         type=int,
         default=-1,
         help="Automatic DDP Multi-GPU argument, do not modify",
     )
+    parser.add_argument("--local-world-size", type=int, default=1)
     parser.add_argument("--min-items", type=int, default=0, help="Experimental")
     parser.add_argument("--close-mosaic", type=int, default=0, help="Experimental")
 
@@ -828,7 +831,7 @@ def main(opt, callbacks=Callbacks()):
 
     # DDP mode
     device = select_device(opt.device, batch_size=opt.batch_size)
-    if LOCAL_RANK != -1:
+    if opt.local_rank != -1:
         msg = "is not compatible with YOLO Multi-GPU DDP training"
         assert not opt.image_weights, f"--image-weights {msg}"
         assert not opt.evolve, f"--evolve {msg}"
@@ -836,13 +839,13 @@ def main(opt, callbacks=Callbacks()):
             opt.batch_size != -1
         ), f"AutoBatch with --batch-size -1 {msg}, please pass a valid --batch-size"
         assert (
-            opt.batch_size % WORLD_SIZE == 0
+            opt.batch_size % opt.local_world_size == 0
         ), f"--batch-size {opt.batch_size} must be multiple of WORLD_SIZE"
         assert (
-            torch.cuda.device_count() > LOCAL_RANK
+            torch.cuda.device_count() > opt.local_rank
         ), "insufficient CUDA devices for DDP command"
-        torch.cuda.set_device(LOCAL_RANK)
-        device = torch.device("cuda", LOCAL_RANK)
+        torch.cuda.set_device(opt.local_rank)
+        device = torch.device("cuda", opt.local_rank)
         dist.init_process_group(backend="nccl" if dist.is_nccl_available() else "gloo")
 
     # Train
