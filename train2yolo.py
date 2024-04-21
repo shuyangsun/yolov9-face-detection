@@ -11,13 +11,13 @@ class WiderFaceDetection(data.Dataset):
         self.preproc = preproc
         self.imgs_path = []
         self.words = []
-        f = open(txt_path, 'r')
+        f = open(txt_path, "r")
         lines = f.readlines()
         isFirst = True
         labels = []
         for line in lines:
             line = line.rstrip()
-            if line.startswith('#'):
+            if line.startswith("#"):
                 if isFirst is True:
                     isFirst = False
                 else:
@@ -25,10 +25,10 @@ class WiderFaceDetection(data.Dataset):
                     self.words.append(labels_copy)
                     labels.clear()
                 path = line[2:]
-                path = txt_path.replace('label.txt', 'images/') + path
+                path = txt_path.replace("label.txt", "images/") + path
                 self.imgs_path.append(path)
             else:
-                line = line.split(' ')
+                line = line.split(" ")
                 label = [float(x) for x in line]
                 labels.append(label)
 
@@ -86,35 +86,39 @@ def detection_collate(batch):
     return torch.stack(imgs, 0), targets
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     if len(sys.argv) == 1:
-        print('Missing path to WIDERFACE train folder.')
-        print('Run command: python3 train2yolo.py /path/to/original/widerface/train [/path/to/save/widerface/train]')
+        print("Missing path to WIDERFACE train folder.")
+        print(
+            "Run command: python3 train2yolo.py /path/to/original/widerface/train [/path/to/save/widerface/train]"
+        )
         exit(1)
     elif len(sys.argv) > 3:
-        print('Too many arguments were provided.')
-        print('Run command: python3 train2yolo.py /path/to/original/widerface/train [/path/to/save/widerface/train]')
+        print("Too many arguments were provided.")
+        print(
+            "Run command: python3 train2yolo.py /path/to/original/widerface/train [/path/to/save/widerface/train]"
+        )
         exit(1)
     original_path = sys.argv[1]
 
     if len(sys.argv) == 2:
-        if not os.path.isdir('widerface'):
-            os.mkdir('widerface')
-        if not os.path.isdir('widerface/train'):
-            os.mkdir('widerface/train')
+        if not os.path.isdir("widerface"):
+            os.mkdir("widerface")
+        if not os.path.isdir("widerface/train"):
+            os.mkdir("widerface/train")
 
-        save_path = 'widerface/train'
+        save_path = "widerface/train"
     else:
         save_path = sys.argv[2]
 
-    if not os.path.isfile(os.path.join(original_path, 'label.txt')):
-        print('Missing label.txt file.')
+    if not os.path.isfile(os.path.join(original_path, "label.txt")):
+        print("Missing label.txt file.")
         exit(1)
 
-    aa = WiderFaceDetection(os.path.join(original_path, 'label.txt'))
+    aa = WiderFaceDetection(os.path.join(original_path, "label.txt"))
 
     for i in range(len(aa.imgs_path)):
-        print(i, aa.imgs_path[i])    
+        print(i, aa.imgs_path[i])
         img = cv2.imread(aa.imgs_path[i])
         base_img = os.path.basename(aa.imgs_path[i])
         base_txt = os.path.basename(aa.imgs_path[i])[:-4] + ".txt"
@@ -138,11 +142,11 @@ if __name__ == '__main__':
                 annotation[0, 1] = (label[1] + label[3] / 2) / height  # cy
                 annotation[0, 2] = label[2] / width  # w
                 annotation[0, 3] = label[3] / height  # h
-                
+
                 str_label = "0"
                 for i in range(len(annotation[0])):
                     str_label += " " + str(annotation[0][i])
-                str_label += '\n'
+                str_label += "\n"
 
                 f.write(str_label)
         cv2.imwrite(save_img_path, img)

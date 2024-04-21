@@ -4,7 +4,7 @@ import numpy as np
 import shutil
 from tqdm import tqdm
 
-root = '/ssd_1t/derron/WiderFace'
+root = "/ssd_1t/derron/WiderFace"
 
 
 def xywh2xxyy(box):
@@ -16,8 +16,8 @@ def xywh2xxyy(box):
 
 
 def convert(size, box):
-    dw = 1. / (size[0])
-    dh = 1. / (size[1])
+    dw = 1.0 / (size[0])
+    dh = 1.0 / (size[1])
     x = (box[0] + box[1]) / 2.0 - 1
     y = (box[2] + box[3]) / 2.0 - 1
     w = box[1] - box[0]
@@ -29,14 +29,14 @@ def convert(size, box):
     return (x, y, w, h)
 
 
-def wider2face(phase='val', ignore_small=0):
+def wider2face(phase="val", ignore_small=0):
     data = {}
-    with open('{}/{}/label.txt'.format(root, phase), 'r') as f:
+    with open("{}/{}/label.txt".format(root, phase), "r") as f:
         lines = f.readlines()
         for line in tqdm(lines):
             line = line.strip()
-            if '#' in line:
-                path = '{}/{}/images/{}'.format(root, phase, os.path.basename(line))
+            if "#" in line:
+                path = "{}/{}/images/{}".format(root, phase, os.path.basename(line))
                 img = cv2.imread(path)
                 height, width, _ = img.shape
                 data[path] = list()
@@ -45,21 +45,25 @@ def wider2face(phase='val', ignore_small=0):
                 if box[2] < ignore_small or box[3] < ignore_small:
                     continue
                 box = convert((width, height), xywh2xxyy(box))
-                label = '0 {} {} {} {} -1 -1 -1 -1 -1 -1 -1 -1 -1 -1'.format(round(box[0], 4), round(box[1], 4),
-                                                                             round(box[2], 4), round(box[3], 4))
+                label = "0 {} {} {} {} -1 -1 -1 -1 -1 -1 -1 -1 -1 -1".format(
+                    round(box[0], 4),
+                    round(box[1], 4),
+                    round(box[2], 4),
+                    round(box[3], 4),
+                )
                 data[path].append(label)
     return data
 
 
-if __name__ == '__main__':
-    datas = wider2face('val')
+if __name__ == "__main__":
+    datas = wider2face("val")
     for idx, data in enumerate(datas.keys()):
         pict_name = os.path.basename(data)
-        out_img = 'widerface/val/images/{}'.format(pict_name)
-        out_txt = 'widerface/val/labels/{}.txt'.format(os.path.splitext(pict_name)[0])
+        out_img = "widerface/val/images/{}".format(pict_name)
+        out_txt = "widerface/val/labels/{}.txt".format(os.path.splitext(pict_name)[0])
         shutil.copyfile(data, out_img)
         labels = datas[data]
-        f = open(out_txt, 'w')
+        f = open(out_txt, "w")
         for label in labels:
-            f.write(label + '\n')
+            f.write(label + "\n")
         f.close()
