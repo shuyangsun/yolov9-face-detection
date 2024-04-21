@@ -5,8 +5,7 @@ __pycache__
 runs/
 datasets/original-widerface
 datasets/widerface
-yolov9/datasets/original-widerface
-yolov9/datasets/widerface
+yolov9/datasets
 
 # General
 .DS_Store
