@@ -64,13 +64,13 @@ To train the model, use the following command:
 
 ``` shell
 cd yolov9
-python train_dual.py --workers 4 --device 0 --batch 8 --data ../widerface.yaml --img 640 --cfg models/detect/yolov9-e.yaml --weights '' --name yolov9-e-face --hyp hyp.scratch-high.yaml --min-items 0 --epochs 500 --close-mosaic 15
+python train_dual.py --workers 32 --device 0 --batch 8 --data ../widerface.yaml --img 640 --cfg models/detect/yolov9-e.yaml --weights '' --name yolov9-e-face --hyp hyp.scratch-high.yaml --min-items 0 --epochs 500 --close-mosaic 15
 ```
 
 ### Multiple GPU
 
 ```shell
-python  -m torch.distributed.launch --nproc_per_node 8 --master_port 9527 train_dual.py --workers 8 --device 0,1 --batch 16 --data ../widerface.yaml --img 640 --cfg models/detect/yolov9-e.yaml --weights '' --name yolov9-e-face --hyp hyp.scratch-high.yaml --min-items 0 --epochs 500 --close-mosaic 15
+python  -m torch.distributed.launch --nproc_per_node 2 --master_port 9527 train_dual.py --workers 32 --device 0,1 --batch 8 --data ../widerface.yaml --img 640 --cfg models/detect/yolov9-e.yaml --weights '' --name yolov9-e-face --hyp hyp.scratch-high.yaml --min-items 0 --epochs 500 --close-mosaic 15
 ```
 
 ## 🌱 Inference
