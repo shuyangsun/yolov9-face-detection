@@ -3,6 +3,8 @@
 .idea
 __pycache__
 runs/
+datasets/original-widerface
+datasets/widerface
 
 # General
 .DS_Store
