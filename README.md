@@ -1,6 +1,6 @@
 <h1 align="center"><span>YOLOv9 for Face Detection</span></h1>
 
-The face detection task identifies and pinpoints human faces in images or videos. This repo demonstrates how to train a YOLOv9 model for highly accurate face detection on the WIDER Face dataset. 
+The face detection task identifies and pinpoints human faces in images or videos. This repo demonstrates how to train a YOLOv9 model for highly accurate face detection on the WIDER Face dataset.
 
 <p align="center" margin: 0 auto;>
   <img src="assets/result.jpg" />
@@ -26,7 +26,7 @@ The WIDER dataset comprises of more than 30k images with more than 390k faces, e
 ```
 ${ROOT}
 └── yolov9
-└── datasets/    
+└── datasets/
     └── widerface/
         └── train/
         └── val/
@@ -58,11 +58,19 @@ These scripts will convert your annotation files to YOLO format, creating one .t
 
 ## 🏋️ Training
 
+### Single GPU
+
 To train the model, use the following command:
 
 ``` shell
 cd yolov9
-python train_dual.py --workers 4 --device 0 --batch 4 --data ../widerface.yaml --img 640 --cfg models/detect/yolov9-c.yaml --weights '' --name yolov9-c --hyp hyp.scratch-high.yaml --min-items 0 --epochs 500 --close-mosaic 15
+python train_dual.py --workers 4 --device 0 --batch 4 --data ../widerface.yaml --img 640 --cfg models/detect/yolov9-c.yaml --weights '' --name yolov9-c-face --hyp hyp.scratch-high.yaml --min-items 0 --epochs 500 --close-mosaic 15
+```
+
+### Multiple GPU
+
+```shell
+python  -m torch.distributed.launch --nproc_per_node 8 --master_port 9527 train_dual.py --workers 8 --device 0,1 --batch 128 --data ../widerface.yaml --img 640 --cfg models/detect/yolov9-e.yaml --weights '' --name yolov9-e-face --hyp hyp.scratch-high.yaml --min-items 0 --epochs 500 --close-mosaic 15
 ```
 
 ## 🌱 Inference
