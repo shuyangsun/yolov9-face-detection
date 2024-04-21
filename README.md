@@ -52,6 +52,7 @@ Run the following commands:
 ```shell
 python train2yolo.py datasets/original-widerface/train datasets/widerface/train
 python val2yolo.py datasets/original-widerface datasets/widerface/val
+mv datasets yolov9/datasets
 ```
 
 These scripts will convert your annotation files to YOLO format, creating one .txt file per image. Each row in the file will represent a single object in the format: `class x_center y_center width height`.
