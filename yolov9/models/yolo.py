@@ -826,10 +826,8 @@ class DetectionModel(BaseModel):
         if isinstance(m, (Detect, DDetect, Segment)):
             s = 256  # 2x min stride
             m.inplace = self.inplace
-            forward = (
-                lambda x: self.forward(x)[0]
-                if isinstance(m, (Segment))
-                else self.forward(x)
+            forward = lambda x: (
+                self.forward(x)[0] if isinstance(m, (Segment)) else self.forward(x)
             )
             m.stride = torch.tensor(
                 [s / x.shape[-2] for x in forward(torch.zeros(1, ch, s, s))]
@@ -925,9 +923,11 @@ class ClassificationModel(BaseModel):
         self, cfg=None, model=None, nc=1000, cutoff=10
     ):  # yaml, model, number of classes, cutoff index
         super().__init__()
-        self._from_detection_model(
-            model, nc, cutoff
-        ) if model is not None else self._from_yaml(cfg)
+        (
+            self._from_detection_model(model, nc, cutoff)
+            if model is not None
+            else self._from_yaml(cfg)
+        )
 
     def _from_detection_model(self, model, nc=1000, cutoff=10):
         # Create a YOLO classification model from a YOLO detection model
